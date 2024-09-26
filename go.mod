@@ -1,4 +1,4 @@
-module github.com/samandar-tukhtayev/rabbitemp
+module github.com/samandar-tukhtayev/rabbittemp
 
 go 1.22.2
 
