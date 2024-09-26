@@ -1,4 +1,4 @@
-module rabbittemp
+module github.com/samandar-tukhtayev/rabbitemp
 
 go 1.22.2
 
