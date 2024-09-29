@@ -2,6 +2,7 @@ package rabbittemp
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/rs/zerolog/log"
 	"github.com/streadway/amqp"
@@ -9,17 +10,34 @@ import (
 
 // New initializes and returns a new RabbitMQ connection and channel
 func New(cfg Config) (*RabbitMQ, error) {
-	conn, err := amqp.Dial(
-		fmt.Sprintf(
-			"amqp://%s:%s@%s:%s/",
-			cfg.RabbitMQUser,
-			cfg.RabbitMQPassword,
-			cfg.RabbitMQHost,
-			cfg.RabbitMQPort,
-		),
-	)
+	var conn *amqp.Connection
+	var err error
+	var retries int
+
+	// Set max retries
+	maxRetries := 5
+
+	for retries < maxRetries {
+		conn, err = amqp.Dial(
+			fmt.Sprintf(
+				"amqp://%s:%s@%s:%s/",
+				cfg.RabbitMQUser,
+				cfg.RabbitMQPassword,
+				cfg.RabbitMQHost,
+				cfg.RabbitMQPort,
+			),
+		)
+		if err != nil {
+			log.Error().Msgf("Error while connecting to RabbitMQ: %s", err.Error())
+			retries++
+			time.Sleep(2 * time.Second) // wait 2 seconds before retrying
+			continue
+		}
+		break
+	}
+
 	if err != nil {
-		log.Error().Msgf("Error while connecting to RabbitMQ: %s", err.Error())
+		log.Error().Msgf("Failed to connect to RabbitMQ after %d retries", maxRetries)
 		return nil, err
 	}
 
@@ -30,7 +48,7 @@ func New(cfg Config) (*RabbitMQ, error) {
 		return nil, err
 	}
 
-	err = channel.Qos(1, 0, false)
+	err = channel.Qos(10, 0, false)
 	if err != nil {
 		log.Error().Msgf("Error while setting QoS: %s", err.Error())
 		channel.Close()
